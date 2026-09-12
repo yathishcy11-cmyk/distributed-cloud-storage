@@ -1,0 +1,86 @@
+services:
+  - type: web
+    name: ycloud-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ycloud-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ycloud-cache
+          type: keyvalue
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_NODES
+        value: http://ycloud-storage-a:9000,http://ycloud-storage-b:9000,http://ycloud-storage-c:9000
+      - key: REPLICATION_FACTOR
+        value: "2"
+      - key: CHUNK_SIZE
+        value: "5242880"
+
+  - type: pserv
+    name: ycloud-storage-a
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./storage-node/Dockerfile
+    dockerContext: ./storage-node
+    envVars:
+      - key: NODE_NAME
+        value: storage-a
+      - key: STORAGE_PATH
+        value: /data
+    disk:
+      name: ycloud-storage-a-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: pserv
+    name: ycloud-storage-b
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./storage-node/Dockerfile
+    dockerContext: ./storage-node
+    envVars:
+      - key: NODE_NAME
+        value: storage-b
+      - key: STORAGE_PATH
+        value: /data
+    disk:
+      name: ycloud-storage-b-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: pserv
+    name: ycloud-storage-c
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./storage-node/Dockerfile
+    dockerContext: ./storage-node
+    envVars:
+      - key: NODE_NAME
+        value: storage-c
+      - key: STORAGE_PATH
+        value: /data
+    disk:
+      name: ycloud-storage-c-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: keyvalue
+    name: ycloud-cache
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  - name: ycloud-db
+    plan: free
+    databaseName: dcs
+    user: dcs
